@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "author": "weathergirl",
+  "editor": "konsumer",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-ili9341",
+      "id": "lcd",
+      "top": 0,
+      "left": 220,
+      "rotate": 90,
+      "attrs": {}
+    }
+  ],
+  "connections": [
+    [ "esp:D13",   "lcd:MOSI", "green",  [] ],
+    [ "esp:D12",   "lcd:MISO", "white",  [] ],
+    [ "esp:D14",   "lcd:SCK",  "blue",   [] ],
+    [ "esp:D15",   "lcd:CS",   "orange", [] ],
+    [ "esp:D2",    "lcd:D/C",  "yellow", [] ],
+    [ "esp:D21",   "lcd:LED",  "purple", [] ],
+    [ "esp:3V3",   "lcd:VCC",  "red",    [] ],
+    [ "esp:GND.1", "lcd:GND",  "black",  [] ]
+  ],
+  "dependencies": {}
+}
