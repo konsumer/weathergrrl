@@ -207,9 +207,6 @@
 static Arduino_DataBus* cnv_bus = nullptr;
 static Arduino_GFX*     gfx    = nullptr;
 
-// Convenience reference macro — use Display.xxx() just like M5Cardputer.Display
-#define Display (*gfx)
-
 // ─── canvas_begin() ───────────────────────────────────────────────────────────
 // Call once in setup(). Initialises the bus, display, and backlight.
 static inline void canvas_begin() {
