@@ -204,20 +204,17 @@
 #define SCREEN_H  _CANVAS_H
 
 // ─── Global display pointer (defined in canvas.h, safe with #pragma once) ────
-static Arduino_DataBus* _canvas_bus    = nullptr;
-static Arduino_GFX*     _canvas_gfx   = nullptr;
-
-// Forward-declare so user code can reference Display before calling canvas_begin()
-static Arduino_GFX* _Display_ptr = nullptr;
+static Arduino_DataBus* cnv_bus = nullptr;
+static Arduino_GFX*     gfx    = nullptr;
 
 // Convenience reference macro — use Display.xxx() just like M5Cardputer.Display
-#define Display (*_Display_ptr)
+#define Display (*gfx)
 
 // ─── canvas_begin() ───────────────────────────────────────────────────────────
 // Call once in setup(). Initialises the bus, display, and backlight.
 static inline void canvas_begin() {
 #ifdef _CANVAS_MISO
-  _canvas_bus = new Arduino_ESP32SPI(
+  cnv_bus = new Arduino_ESP32SPI(
     _CANVAS_DC,
     _CANVAS_CS,
     _CANVAS_SCK,
@@ -225,7 +222,7 @@ static inline void canvas_begin() {
     _CANVAS_MISO
   );
 #else
-  _canvas_bus = new Arduino_ESP32SPI(
+  cnv_bus = new Arduino_ESP32SPI(
     _CANVAS_DC,
     _CANVAS_CS,
     _CANVAS_SCK,
@@ -234,20 +231,20 @@ static inline void canvas_begin() {
 #endif
 
 #if defined(_CANVAS_DRIVER) && (_CANVAS_DRIVER == ILI9341)
-  _canvas_gfx = new Arduino_ILI9341(
-    _canvas_bus,
+  gfx = new Arduino_ILI9341(
+    cnv_bus,
     _CANVAS_RST,
     _CANVAS_ROTATION
   );
 #elif defined(_CANVAS_DRIVER) && (_CANVAS_DRIVER == ST7796)
-  _canvas_gfx = new Arduino_ST7796(
-    _canvas_bus,
+  gfx = new Arduino_ST7796(
+    cnv_bus,
     _CANVAS_RST,
     _CANVAS_ROTATION
   );
 #else
-  _canvas_gfx = new Arduino_ST7789(
-    _canvas_bus,
+  gfx = new Arduino_ST7789(
+    cnv_bus,
     _CANVAS_RST,
     _CANVAS_ROTATION,
     _CANVAS_IPS,
@@ -260,16 +257,15 @@ static inline void canvas_begin() {
   );
 #endif
 
-  _Display_ptr = _canvas_gfx;
   Serial.begin(115200);
   delay(500);
-  if (!_Display_ptr->begin()) {
+  if (!gfx->begin()) {
     Serial.println("canvas: display begin() FAILED");
   } else {
     Serial.println("canvas: display begin() OK");
-    _Display_ptr->fillScreen(RED);
+    gfx->fillScreen(RED);
     delay(500);
-    _Display_ptr->fillScreen(BLACK);
+    gfx->fillScreen(BLACK);
   }
 
 #ifdef _CANVAS_BL
