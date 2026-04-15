@@ -5,7 +5,7 @@ enum WeatherCondition {
     CLOUDY,
     RAIN,
     SNOW,
-    THUNDERSTORM
+    THUNDER
 };
 
 void draw_weather_glyph(Arduino_GFX* gfx, WeatherCondition condition, int16_t x, int16_t y) {
@@ -25,7 +25,7 @@ void draw_weather_glyph(Arduino_GFX* gfx, WeatherCondition condition, int16_t x,
         case SNOW:
             gfx->print("\xe2\x98\x83");  // ☃ snow (U+2603)
             break;
-        case THUNDERSTORM:
+        case THUNDER:
             gfx->print("\xe2\x9a\xa1");  // ⚡ thunderstorm (U+26A1)
             break;
     }

@@ -1,5 +1,12 @@
 This is a simple weather-forecast device.
 
+```sh
+pip install platformio
+
+pio run --target upload
+```
+
+
 
 ## notes
 
