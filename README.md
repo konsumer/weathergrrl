@@ -1,6 +1,6 @@
 This is a simple weather-forecast device.
 
-<img width="309" height="232" alt="Screenshot 2026-04-16 at 2 22 41 AM" src="https://github.com/user-attachments/assets/9e0252f8-fbc0-4098-82f9-fd9bdd7fa692" />
+<img width="521" height="392" alt="Screenshot 2026-04-16 at 5 55 27 AM" src="https://github.com/user-attachments/assets/ad57dc00-1bb0-4d45-9aa5-448bac6da786" />
 
 
 ```sh
