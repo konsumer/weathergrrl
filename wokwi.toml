@@ -1,4 +1,4 @@
 [wokwi]
 version = 1
-firmware = ".pio/build/cyd/firmware.bin"
-elf = ".pio/build/cyd/firmware.elf"
+firmware = ".pio/build/cyd_wokwi/firmware.bin"
+elf = ".pio/build/cyd_wokwi/firmware.elf"

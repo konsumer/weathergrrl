@@ -13,18 +13,20 @@
   #include <SPI.h>
   #include <XPT2046_Touchscreen.h>
 
-  // Pins (touch shares SPI bus with display, different CS)
+  // Touch uses its own SPI bus (separate from display)
   #define _TOUCH_CS   33
   #define _TOUCH_IRQ  36
-  #define _TOUCH_SCK  14
-  #define _TOUCH_MISO 12
-  #define _TOUCH_MOSI 13
+  #define _TOUCH_SCK  25
+  #define _TOUCH_MISO 39
+  #define _TOUCH_MOSI 32
 
-  // Raw ADC calibration — adjust if tap targets feel off
-  #define _TOUCH_X_MIN  340
-  #define _TOUCH_X_MAX  3860
-  #define _TOUCH_Y_MIN  240
-  #define _TOUCH_Y_MAX  3860
+  // Raw ADC calibration — adjust if tap targets feel off.
+  // After setRotation(1): p.x = 4095-raw_y, p.y = raw_x.
+  // Widen these if edges of the screen are hard to tap.
+  #define _TOUCH_X_MIN  200
+  #define _TOUCH_X_MAX  3900
+  #define _TOUCH_Y_MIN  200
+  #define _TOUCH_Y_MAX  3900
 
   static SPIClass            _touch_spi(VSPI);
   static XPT2046_Touchscreen _touch(_TOUCH_CS, _TOUCH_IRQ);
