@@ -142,7 +142,7 @@ static void wx_draw_clock() {
     gfx->setTextColor(YELLOW, DARKBLUE);
     gfx->setTextSize(2);
     gfx->setCursor(20, WX_CLOCK_Y - 60);
-    gfx->print("hey grrrl, it's");
+    gfx->print("hey grrl, it's");
 
     // Date line above clock
     const char* dow[] = {"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
