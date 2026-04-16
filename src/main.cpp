@@ -59,6 +59,14 @@ void setup() {
     }
 #endif
 
+    gfx->fillScreen(ORANGE);
+    draw_outfit_for_temp(gfx, wx_temp, 80);
+    gfx->setFont();
+    gfx->setTextColor(WHITE);
+    gfx->setTextSize(3);
+    gfx->setCursor(8, 100);
+    gfx->print("Getting info...");
+
     // NTP sync — UTC; local offset comes from weather API
     configTime(0, 0, "pool.ntp.org");
     uint32_t sync_t = millis();

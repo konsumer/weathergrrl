@@ -15,14 +15,20 @@ static float            wx_temp    = 72.0f;
 static WeatherCondition wx_cond    = SUNNY;
 static int32_t          wx_utc_off = 0;
 static WxDay            wx_days[WX_FORECAST_DAYS] = {};
+static float            wx_feels   = 72.0f;
+static float            wx_humidity = 0.0f;
+static float            wx_pressure = 0.0f;
+static float            wx_wind_spd = 0.0f;
+static float            wx_wind_gst = 0.0f;
+static int16_t          wx_wind_dir = 0;
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 #define WX_FCAST_H  52            // forecast strip height
 #define WX_FCAST_W  200           // forecast strip covers left portion
 
 // Clock text position (left side, vertically centred above forecast strip)
-#define WX_CLOCK_X  30
-#define WX_CLOCK_Y  ((SCREEN_H - WX_FCAST_H) / 2 - 12)   // 12 = half of 24px (textSize=3)
+#define WX_CLOCK_X  20
+#define WX_CLOCK_Y  ((SCREEN_H - WX_FCAST_H) / 2 - 20)
 
 // Current-temp position (between her legs, near bottom)
 #define WX_TEMP_X   200
@@ -33,6 +39,11 @@ static WxDay            wx_days[WX_FORECAST_DAYS] = {};
 #define WX_ICON_Y   9
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+static const char* _wx_compass(int deg) {
+    const char* d[] = {"N","NE","E","SE","S","SW","W","NW"};
+    return d[((deg + 22) % 360) / 45];
+}
+
 static WeatherCondition _wx_wmo(int c) {
     if (c == 0 || c == 1)                return SUNNY;
     if (c <= 3 || c == 45 || c == 48)   return CLOUDY;
@@ -123,9 +134,29 @@ static void wx_draw_clock() {
     time_t now = time(nullptr) + wx_utc_off;
     struct tm t;
     gmtime_r(&now, &t);
+
+    gfx->setFont();
+
+    gfx->setTextColor(YELLOW, DARKBLUE);
+    gfx->setTextSize(2);
+    gfx->setCursor(20, WX_CLOCK_Y - 60);
+    gfx->print("hey grrrl, it's");
+
+    // Date line above clock
+    const char* dow[] = {"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
+    char date[24];
+    snprintf(date, sizeof(date), "%s, %d/%d/%d",
+             dow[t.tm_wday], t.tm_mon + 1, t.tm_mday, t.tm_year + 1900);
+    gfx->fillRect(WX_CLOCK_X, WX_CLOCK_Y - 20, 30 * 6, 8, DARKBLUE);
+    
+    gfx->setTextSize(1);
+    gfx->setTextColor(RGB565(180, 200, 255), DARKBLUE);
+    gfx->setCursor(WX_CLOCK_X, WX_CLOCK_Y - 20);
+    gfx->print(date);
+
+    // Clock
     char buf[12];
     snprintf(buf, sizeof(buf), "%02d:%02d:%02d", t.tm_hour, t.tm_min, t.tm_sec);
-
     gfx->fillRect(WX_CLOCK_X, WX_CLOCK_Y, 8 * 18, 24, DARKBLUE);  // 8 chars × 18px wide
     gfx->setFont();
     gfx->setTextColor(WHITE, DARKBLUE);
@@ -161,9 +192,29 @@ static void wx_draw_forecast() {
         _wx_center(cx, y0 + 44, cw, buf, RGB565(100, 180, 255));
     }
 
+    // Extra conditions — two small lines below the forecast cells
+    char line[48];
+    const int16_t iy = y0 + WX_FCAST_H + 16;   // just below icon+hi+lo rows
+    gfx->setTextSize(1);
+    gfx->setFont();
+
+    snprintf(line, sizeof(line), "FL:%.0fF  H:%.0f%%  P:%.0fmb",
+             wx_feels, wx_humidity, wx_pressure);
+    gfx->fillRect(10, iy, WX_FCAST_W-30, 8, DARKBLUE);
+    gfx->setTextColor(RGB565(180, 180, 255));
+    gfx->setCursor(12, iy);
+    gfx->print(line);
+
+    snprintf(line, sizeof(line), "W:%.0fmph %s  G:%.0fmph",
+             wx_wind_spd, _wx_compass(wx_wind_dir), wx_wind_gst);
+    gfx->fillRect(10, iy + 10, WX_FCAST_W-30, 8, DARKBLUE);
+    gfx->setTextColor(RGB565(180, 220, 255));
+    gfx->setCursor(12, iy + 10);
+    gfx->print(line);
+
     // Current temp — between her legs, near bottom
     snprintf(buf, sizeof(buf), "%.0fF", wx_temp);
-    gfx->fillRect(WX_TEMP_X + 12, WX_TEMP_Y, 46, 16, DARKBLUE);  // clear bg for text
+    gfx->fillRect(WX_TEMP_X + 12, WX_TEMP_Y, 46, 16, DARKBLUE);
     gfx->setTextSize(2);
     _wx_center(WX_TEMP_X, WX_TEMP_Y, 46, buf, YELLOW);
 }
@@ -216,22 +267,30 @@ static bool wx_fetch() {
     if (lat == 0.0f && lon == 0.0f) return false;
 
     // 2. Current + 5-day forecast
-    char url[300];
+    char url[512];
     snprintf(url, sizeof(url),
         "https://api.open-meteo.com/v1/forecast"
         "?latitude=%.4f&longitude=%.4f"
-        "&current=temperature_2m,weather_code"
+        "&current=temperature_2m,weather_code,apparent_temperature"
+        ",relative_humidity_2m,pressure_msl"
+        ",wind_speed_10m,wind_direction_10m,wind_gusts_10m"
         "&daily=weather_code,temperature_2m_max,temperature_2m_min"
-        "&temperature_unit=fahrenheit"
+        "&temperature_unit=fahrenheit&wind_speed_unit=mph"
         "&timezone=auto&forecast_days=%d",
         lat, lon, WX_FORECAST_DAYS);
 
     JsonDocument wx;
     if (!_wx_fetch_json(url, wx)) return false;
 
-    wx_temp    = wx["current"]["temperature_2m"]  | wx_temp;
-    wx_cond    = _wx_wmo(wx["current"]["weather_code"] | 0);
-    wx_utc_off = wx["utc_offset_seconds"]          | wx_utc_off;
+    wx_temp     = wx["current"]["temperature_2m"]       | wx_temp;
+    wx_cond     = _wx_wmo(wx["current"]["weather_code"] | 0);
+    wx_utc_off  = wx["utc_offset_seconds"]              | wx_utc_off;
+    wx_feels    = wx["current"]["apparent_temperature"] | wx_feels;
+    wx_humidity = wx["current"]["relative_humidity_2m"] | wx_humidity;
+    wx_pressure = wx["current"]["pressure_msl"]         | wx_pressure;
+    wx_wind_spd = wx["current"]["wind_speed_10m"]       | wx_wind_spd;
+    wx_wind_dir = wx["current"]["wind_direction_10m"]   | wx_wind_dir;
+    wx_wind_gst = wx["current"]["wind_gusts_10m"]       | wx_wind_gst;
 
     for (int i = 0; i < WX_FORECAST_DAYS; i++) {
         wx_days[i].hi   = wx["daily"]["temperature_2m_max"][i] | 0.0f;
