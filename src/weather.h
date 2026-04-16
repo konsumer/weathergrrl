@@ -21,6 +21,8 @@ static float            wx_pressure = 0.0f;
 static float            wx_wind_spd = 0.0f;
 static float            wx_wind_gst = 0.0f;
 static int16_t          wx_wind_dir = 0;
+static char             wx_sunrise[6] = "--:--";
+static char             wx_sunset[6]  = "--:--";
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 #define WX_FCAST_H  52            // forecast strip height
@@ -212,6 +214,12 @@ static void wx_draw_forecast() {
     gfx->setCursor(12, iy + 10);
     gfx->print(line);
 
+    snprintf(line, sizeof(line), "Rise %s  Set %s", wx_sunrise, wx_sunset);
+    gfx->fillRect(10, iy + 20, WX_FCAST_W-30, 8, DARKBLUE);
+    gfx->setTextColor(RGB565(255, 220, 130));
+    gfx->setCursor(12, iy + 20);
+    gfx->print(line);
+
     // Current temp — between her legs, near bottom
     snprintf(buf, sizeof(buf), "%.0fF", wx_temp);
     gfx->fillRect(WX_TEMP_X + 12, WX_TEMP_Y, 46, 16, DARKBLUE);
@@ -274,7 +282,7 @@ static bool wx_fetch() {
         "&current=temperature_2m,weather_code,apparent_temperature"
         ",relative_humidity_2m,pressure_msl"
         ",wind_speed_10m,wind_direction_10m,wind_gusts_10m"
-        "&daily=weather_code,temperature_2m_max,temperature_2m_min"
+        "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset"
         "&temperature_unit=fahrenheit&wind_speed_unit=mph"
         "&timezone=auto&forecast_days=%d",
         lat, lon, WX_FORECAST_DAYS);
@@ -298,6 +306,14 @@ static bool wx_fetch() {
         wx_days[i].cond = _wx_wmo(wx["daily"]["weather_code"][i] | 0);
         _wx_day_label(wx["daily"]["time"][i] | "", wx_days[i].day);
     }
+
+    // Sunrise/sunset today — format "2026-04-16T06:23", keep "HH:MM" after 'T'
+    auto _parse_hhmm = [](const char* s, char out[6]) {
+        const char* t = strchr(s, 'T');
+        if (t && strlen(t) >= 6) { memcpy(out, t + 1, 5); out[5] = '\0'; }
+    };
+    _parse_hhmm(wx["daily"]["sunrise"][0] | "--:--", wx_sunrise);
+    _parse_hhmm(wx["daily"]["sunset"][0]  | "--:--", wx_sunset);
 
     Serial.printf("[wx] %.1fF code=%d utc=%d\n",
                   wx_temp, (int)wx["current"]["weather_code"], wx_utc_off);
