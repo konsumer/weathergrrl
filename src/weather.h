@@ -25,7 +25,7 @@ static WxDay            wx_days[WX_FORECAST_DAYS] = {};
 #define WX_CLOCK_Y  ((SCREEN_H - WX_FCAST_H) / 2 - 12)   // 12 = half of 24px (textSize=3)
 
 // Current-temp position (between her legs, near bottom)
-#define WX_TEMP_X   220
+#define WX_TEMP_X   200
 #define WX_TEMP_Y   (SCREEN_H - 20)
 
 // Condition icon position (top-right, peeks over her shoulder)
@@ -136,7 +136,7 @@ static void wx_draw_clock() {
 
 // Draws the 5-day forecast strip at the bottom-left — called from wx_draw_full()
 static void wx_draw_forecast() {
-    const int16_t y0 = SCREEN_H - WX_FCAST_H - 80;
+    const int16_t y0 = SCREEN_H - WX_FCAST_H - 70;
     const int16_t cw = WX_FCAST_W / WX_FORECAST_DAYS;  // 40px each (200/5)
 
     gfx->setFont();
@@ -163,11 +163,9 @@ static void wx_draw_forecast() {
 
     // Current temp — between her legs, near bottom
     snprintf(buf, sizeof(buf), "%.0fF", wx_temp);
-    gfx->fillRect(WX_TEMP_X, WX_TEMP_Y, 56, 16, DARKBLUE);
+    gfx->fillRect(WX_TEMP_X + 12, WX_TEMP_Y, 46, 16, DARKBLUE);  // clear bg for text
     gfx->setTextSize(2);
-    gfx->setTextColor(YELLOW, DARKBLUE);
-    gfx->setCursor(WX_TEMP_X, WX_TEMP_Y);
-    gfx->print(buf);
+    _wx_center(WX_TEMP_X, WX_TEMP_Y, 46, buf, YELLOW);
 }
 
 // Full repaint — call on startup and after each weather refresh
