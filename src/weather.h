@@ -1,10 +1,8 @@
 #pragma once
 #include <math.h>
-#ifndef WOKWI_SIMULATION
-#  include <HTTPClient.h>
-#  include <WiFiClientSecure.h>
-#  include <ArduinoJson.h>
-#endif
+#include <HTTPClient.h>
+#include <WiFiClientSecure.h>
+#include <ArduinoJson.h>
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 enum WeatherCondition { SUNNY, CLOUDY, RAIN, SNOW, THUNDER };
@@ -120,12 +118,26 @@ static void draw_weather_glyph(Arduino_GFX* g, WeatherCondition cond,
 
 // ─── Drawing ──────────────────────────────────────────────────────────────────
 
+// Redraws clock text only — call every second from loop()
+static void wx_draw_clock() {
+    time_t now = time(nullptr) + wx_utc_off;
+    struct tm t;
+    gmtime_r(&now, &t);
+    char buf[12];
+    snprintf(buf, sizeof(buf), "%02d:%02d:%02d", t.tm_hour, t.tm_min, t.tm_sec);
 
+    gfx->fillRect(WX_CLOCK_X, WX_CLOCK_Y, 8 * 18, 24, DARKBLUE);  // 8 chars × 18px wide
+    gfx->setFont();
+    gfx->setTextColor(WHITE, DARKBLUE);
+    gfx->setTextSize(3);
+    gfx->setCursor(WX_CLOCK_X, WX_CLOCK_Y);
+    gfx->print(buf);
+}
 
 // Draws the 5-day forecast strip at the bottom-left — called from wx_draw_full()
 static void wx_draw_forecast() {
     const int16_t y0 = SCREEN_H - WX_FCAST_H - 80;
-    const int16_t cw = WX_FCAST_W / WX_FORECAST_DAYS;  // 32px each (160/5)
+    const int16_t cw = WX_FCAST_W / WX_FORECAST_DAYS;  // 40px each (200/5)
 
     gfx->setFont();
     gfx->setTextSize(1);
@@ -151,17 +163,23 @@ static void wx_draw_forecast() {
 
     // Current temp — between her legs, near bottom
     snprintf(buf, sizeof(buf), "%.0fF", wx_temp);
-    gfx->fillRect(WX_TEMP_X, WX_TEMP_Y, 36, 16, DARKBLUE);  // wide enough for "100F"
+    gfx->fillRect(WX_TEMP_X, WX_TEMP_Y, 56, 16, DARKBLUE);
     gfx->setTextSize(2);
     gfx->setTextColor(YELLOW, DARKBLUE);
     gfx->setCursor(WX_TEMP_X, WX_TEMP_Y);
     gfx->print(buf);
 }
 
+// Full repaint — call on startup and after each weather refresh
+static void wx_draw_full() {
+    gfx->fillScreen(DARKBLUE);
+    draw_weather_glyph(gfx, wx_cond, WX_ICON_X, WX_ICON_Y);  // icon before outfit
+    draw_outfit_for_temp(gfx, wx_temp, 80);
+    wx_draw_forecast();
+    wx_draw_clock();
+}
 
-
-// ─── Fetch (WiFi / real hardware only) ────────────────────────────────────────
-#ifndef WOKWI_SIMULATION
+// ─── Fetch ────────────────────────────────────────────────────────────────────
 static bool _wx_fetch_json(const char* url, JsonDocument& doc) {
     WiFiClientSecure client;
     client.setInsecure();
@@ -228,4 +246,3 @@ static bool wx_fetch() {
                   wx_temp, (int)wx["current"]["weather_code"], wx_utc_off);
     return true;
 }
-#endif // WOKWI_SIMULATION
