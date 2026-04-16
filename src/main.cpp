@@ -11,6 +11,33 @@
 static uint32_t g_last_wx = 0;
 #define WX_INTERVAL (10UL * 60 * 1000)      // refresh weather every 10 min
 
+// Redraws clock + temp text only — call every second from loop().
+// Does NOT redraw the condition icon (static until next draw_full).
+static void draw_clock() {
+    time_t now = time(nullptr) + wx_utc_off;
+    struct tm t;
+    gmtime_r(&now, &t);
+    char buf[12];
+    snprintf(buf, sizeof(buf), "%02d:%02d:%02d", t.tm_hour, t.tm_min, t.tm_sec);
+
+    // Clock — left side, vertically centred above forecast strip
+    gfx->fillRect(WX_CLOCK_X, WX_CLOCK_Y, 8 * 18, 24, DARKBLUE);  // 8 chars × 18px, 24px tall
+    gfx->setFont();
+    gfx->setTextColor(WHITE, DARKBLUE);
+    gfx->setTextSize(3);
+    gfx->setCursor(WX_CLOCK_X, WX_CLOCK_Y);
+    gfx->print(buf);
+}
+
+// Full repaint — call on startup and after each weather refresh
+static void draw_full() {
+    gfx->fillScreen(DARKBLUE);
+    draw_weather_glyph(gfx, wx_cond, WX_ICON_X, WX_ICON_Y);  // icon first (behind outfit)
+    draw_outfit_for_temp(gfx, wx_temp, 80);   // outfit over icon
+    wx_draw_forecast();                         // bottom bar
+    draw_clock();                            // clock + temp text (no bar)
+}
+
 // ── Setup ─────────────────────────────────────────────────────────────────────
 void setup() {
     canvas_begin();
@@ -69,7 +96,7 @@ void setup() {
     g_last_wx = millis();
 #endif // WOKWI_SIMULATION
 
-    wx_draw_full();
+    draw_full();
 }
 
 // ── Loop ──────────────────────────────────────────────────────────────────────
@@ -78,10 +105,10 @@ void loop() {
     if (millis() - g_last_wx >= WX_INTERVAL) {
         wx_fetch();
         g_last_wx = millis();
-        wx_draw_full();
+        draw_full();
     }
 #endif
 
-    wx_draw_clock();
+    draw_clock();
     delay(1000);
 }

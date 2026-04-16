@@ -8,3 +8,7 @@ pip install platformio
 
 pio run --target upload
 ```
+
+Build this with a [CYD](https://www.aliexpress.us/w/wholesale-cyd.html), which you can usually get for about $20.
+
+The default config is to use wifi to check weather and display it, but this idea could be extended to read sensors or display some other internet thing.

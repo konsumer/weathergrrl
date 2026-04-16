@@ -19,8 +19,20 @@ static int32_t          wx_utc_off = 0;
 static WxDay            wx_days[WX_FORECAST_DAYS] = {};
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
-#define WX_BAR_H    38   // top bar: clock + current conditions
-#define WX_FCAST_H  52   // bottom bar: 5-day forecast
+#define WX_FCAST_H  52            // forecast strip height
+#define WX_FCAST_W  200           // forecast strip covers left portion
+
+// Clock text position (left side, vertically centred above forecast strip)
+#define WX_CLOCK_X  30
+#define WX_CLOCK_Y  ((SCREEN_H - WX_FCAST_H) / 2 - 12)   // 12 = half of 24px (textSize=3)
+
+// Current-temp position (between her legs, near bottom)
+#define WX_TEMP_X   220
+#define WX_TEMP_Y   (SCREEN_H - 20)
+
+// Condition icon position (top-right, peeks over her shoulder)
+#define WX_ICON_X   (SCREEN_W - 30)
+#define WX_ICON_Y   9
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 static WeatherCondition _wx_wmo(int c) {
@@ -108,49 +120,21 @@ static void draw_weather_glyph(Arduino_GFX* g, WeatherCondition cond,
 
 // ─── Drawing ──────────────────────────────────────────────────────────────────
 
-// Redraws only the top bar — call every second from loop()
-static void wx_draw_clock() {
-    time_t now = time(nullptr) + wx_utc_off;
-    struct tm t;
-    gmtime_r(&now, &t);
-    char buf[12];
-    snprintf(buf, sizeof(buf), "%02d:%02d:%02d", t.tm_hour, t.tm_min, t.tm_sec);
 
-    gfx->fillRect(0, 0, SCREEN_W, WX_BAR_H, DARKBLUE);
-    gfx->setFont();
-    gfx->setTextColor(WHITE, DARKBLUE);
-    gfx->setTextSize(3);
-    gfx->setCursor(8, 7);
-    gfx->print(buf);
 
-    // Current temp (right of clock)
-    snprintf(buf, sizeof(buf), "%.0fF", wx_temp);
-    int16_t tw = (int16_t)(strlen(buf) * 12);  // textSize=2 → 12px/char
-    gfx->setTextSize(2);
-    gfx->setTextColor(YELLOW, DARKBLUE);
-    gfx->setCursor(SCREEN_W - tw - 26, 11);
-    gfx->print(buf);
-
-    // Current condition icon (far right)
-    draw_weather_glyph(gfx, wx_cond, SCREEN_W - 22, 9);
-}
-
-// Draws the 5-day forecast strip at the bottom — called from wx_draw_full()
+// Draws the 5-day forecast strip at the bottom-left — called from wx_draw_full()
 static void wx_draw_forecast() {
-    const int16_t y0 = SCREEN_H - WX_FCAST_H;
-    const int16_t cw = SCREEN_W / WX_FORECAST_DAYS;   // 64px each
-
-    gfx->fillRect(0, y0, SCREEN_W, WX_FCAST_H, DARKBLUE);
-    gfx->drawFastHLine(0, y0, SCREEN_W, BLUE);
+    const int16_t y0 = SCREEN_H - WX_FCAST_H - 80;
+    const int16_t cw = WX_FCAST_W / WX_FORECAST_DAYS;  // 32px each (160/5)
 
     gfx->setFont();
     gfx->setTextSize(1);
 
+    char buf[8];
+
     for (int i = 0; i < WX_FORECAST_DAYS; i++) {
         int16_t cx = i * cw;
         const WxDay& d = wx_days[i];
-
-        if (i > 0) gfx->drawFastVLine(cx, y0, WX_FCAST_H, BLUE);
 
         // Day name
         _wx_center(cx, y0 + 2, cw, d.day, WHITE);
@@ -159,21 +143,22 @@ static void wx_draw_forecast() {
         draw_weather_glyph(gfx, d.cond, cx + (cw - 20) / 2, y0 + 12);
 
         // Hi (warm) / Lo (cool)
-        char buf[8];
         snprintf(buf, sizeof(buf), "%.0fF", d.hi);
         _wx_center(cx, y0 + 34, cw, buf, RGB565(255, 140,  80));
         snprintf(buf, sizeof(buf), "%.0fF", d.lo);
         _wx_center(cx, y0 + 44, cw, buf, RGB565(100, 180, 255));
     }
+
+    // Current temp — between her legs, near bottom
+    snprintf(buf, sizeof(buf), "%.0fF", wx_temp);
+    gfx->fillRect(WX_TEMP_X, WX_TEMP_Y, 36, 16, DARKBLUE);  // wide enough for "100F"
+    gfx->setTextSize(2);
+    gfx->setTextColor(YELLOW, DARKBLUE);
+    gfx->setCursor(WX_TEMP_X, WX_TEMP_Y);
+    gfx->print(buf);
 }
 
-// Full repaint — call on startup and after each weather refresh
-static void wx_draw_full() {
-    gfx->fillScreen(DARKBLUE);
-    draw_outfit_for_temp(gfx, wx_temp, 80);   // outfit as background
-    wx_draw_forecast();                         // bottom bar (over outfit)
-    wx_draw_clock();                            // top bar (over outfit)
-}
+
 
 // ─── Fetch (WiFi / real hardware only) ────────────────────────────────────────
 #ifndef WOKWI_SIMULATION
