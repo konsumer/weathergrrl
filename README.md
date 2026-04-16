@@ -1,7 +1,6 @@
 This is a simple weather-forecast device.
 
-<img width="521" height="392" alt="Screenshot 2026-04-16 at 5 55 27 AM" src="https://github.com/user-attachments/assets/ad57dc00-1bb0-4d45-9aa5-448bac6da786" />
-
+<img width="523" height="393" alt="Screenshot 2026-04-16 at 6 06 41 AM" src="https://github.com/user-attachments/assets/79cd8287-1976-43c2-910f-b6b978c471bf" />
 
 ```sh
 pip install platformio
