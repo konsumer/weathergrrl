@@ -1,19 +1,9 @@
 This is a simple weather-forecast device.
 
+<img width="317" height="238" alt="screen" src="https://github.com/user-attachments/assets/e3d3a109-a907-40e6-a079-5575af9343f7" />
+
 ```sh
 pip install platformio
 
 pio run --target upload
-```
-
-
-
-## notes
-
-```
-# location
-https://vpncheck-david-konsumers-projects-edc64e5e.vercel.app/geo
-
-# weather
-https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,rain,showers,snowfall,weather_code,surface_pressure,pressure_msl,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m&timezone=auto&forecast_days=3
 ```
