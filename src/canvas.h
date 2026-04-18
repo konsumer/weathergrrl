@@ -104,7 +104,7 @@
   #define _CANVAS_SCK       36
   #define _CANVAS_MOSI      35
   #define _CANVAS_RST       33
-  #define _CANVAS_BL        38
+  #define _CANVAS_BL        27
   #define _CANVAS_BL_ACTIVE HIGH  // HIGH turns backlight on
   #define _CANVAS_W         240   // post-rotation (landscape)
   #define _CANVAS_H         135

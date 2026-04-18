@@ -1,8 +1,36 @@
 #pragma once
 #include <math.h>
 #include <HTTPClient.h>
+
+// ─── Unit selection (set via build_flags) ─────────────────────────────────────
+// -DWX_CELSIUS  → display °C  (default: °F)
+// -DWX_WIND_KMH → display km/h (default: mph)
+// State is always stored in metric (°C, km/h); conversion happens at display.
+#ifdef WX_CELSIUS
+#  define WX_TEMP_UNIT            "C"
+#  define WX_FROM_METRIC_TEMP(c)  (c)
+#else
+#  define WX_TEMP_UNIT            "F"
+#  define WX_FROM_METRIC_TEMP(c)  ((c) * 9.0f / 5.0f + 32.0f)
+#endif
+
+#ifdef WX_WIND_KMH
+#  define WX_WIND_UNIT            "km/h"
+#  define WX_FROM_METRIC_WIND(k)  (k)
+#else
+#  define WX_WIND_UNIT            "mph"
+#  define WX_FROM_METRIC_WIND(k)  ((k) * 0.621371f)
+#endif
 #include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
+
+#ifdef AHTX0
+#include <Wire.h>
+#include <Adafruit_AHTX0.h>
+Adafruit_AHTX0 aht;
+#define AHTX0_SDA 21
+#define AHTX0_SCL 22
+#endif
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 enum WeatherCondition { SUNNY, CLOUDY, RAIN, SNOW, THUNDER };
@@ -11,11 +39,11 @@ enum WeatherCondition { SUNNY, CLOUDY, RAIN, SNOW, THUNDER };
 struct WxDay { float hi, lo; WeatherCondition cond; char day[4]; };
 
 // ─── State ────────────────────────────────────────────────────────────────────
-static float            wx_temp    = 72.0f;
+static float            wx_temp    = 22.0f;   // °C
 static WeatherCondition wx_cond    = SUNNY;
 static int32_t          wx_utc_off = 0;
 static WxDay            wx_days[WX_FORECAST_DAYS] = {};
-static float            wx_feels   = 72.0f;
+static float            wx_feels   = 22.0f;   // °C
 static float            wx_humidity = 0.0f;
 static float            wx_pressure = 0.0f;
 static float            wx_wind_spd = 0.0f;
@@ -23,6 +51,30 @@ static float            wx_wind_gst = 0.0f;
 static int16_t          wx_wind_dir = 0;
 static char             wx_sunrise[6] = "--:--";
 static char             wx_sunset[6]  = "--:--";
+
+#ifdef AHTX0
+static bool _aht_ready = false;
+
+static bool wx_sensor_begin() {
+    Wire.begin(AHTX0_SDA, AHTX0_SCL);
+    _aht_ready = aht.begin();
+    if (!_aht_ready) {
+        Serial.println("[wx] Could not find AHTX0 sensor — will use internet temp");
+        return false;
+    }
+    Serial.println("[wx] AHTX0 ready");
+    return true;
+}
+
+static void wx_sensor_read() {
+    if (!_aht_ready) return;
+    sensors_event_t hum_ev, temp_ev;
+    aht.getEvent(&hum_ev, &temp_ev);
+    wx_temp     = temp_ev.temperature;   // stored as °C
+    wx_humidity = hum_ev.relative_humidity;
+    Serial.printf("[aht] %.1f°C  %.0f%%\n", wx_temp, wx_humidity);
+}
+#endif
 
 // ─── Layout ───────────────────────────────────────────────────────────────────
 #define WX_FCAST_H  52            // forecast strip height
@@ -188,9 +240,9 @@ static void wx_draw_forecast() {
         draw_weather_glyph(gfx, d.cond, cx + (cw - 20) / 2, y0 + 12);
 
         // Hi (warm) / Lo (cool)
-        snprintf(buf, sizeof(buf), "%.0fF", d.hi);
+        snprintf(buf, sizeof(buf), "%.0f" WX_TEMP_UNIT, WX_FROM_METRIC_TEMP(d.hi));
         _wx_center(cx, y0 + 34, cw, buf, RGB565(255, 140,  80));
-        snprintf(buf, sizeof(buf), "%.0fF", d.lo);
+        snprintf(buf, sizeof(buf), "%.0f" WX_TEMP_UNIT, WX_FROM_METRIC_TEMP(d.lo));
         _wx_center(cx, y0 + 44, cw, buf, RGB565(100, 180, 255));
     }
 
@@ -200,15 +252,15 @@ static void wx_draw_forecast() {
     gfx->setTextSize(1);
     gfx->setFont();
 
-    snprintf(line, sizeof(line), "FL:%.0fF  H:%.0f%%  P:%.0fmb",
-             wx_feels, wx_humidity, wx_pressure);
+    snprintf(line, sizeof(line), "FL:%.0f" WX_TEMP_UNIT "  H:%.0f%%  P:%.0fmb",
+             WX_FROM_METRIC_TEMP(wx_feels), wx_humidity, wx_pressure);
     gfx->fillRect(10, iy, WX_FCAST_W-30, 8, DARKBLUE);
     gfx->setTextColor(RGB565(180, 180, 255));
     gfx->setCursor(12, iy);
     gfx->print(line);
 
-    snprintf(line, sizeof(line), "W:%.0fmph %s  G:%.0fmph",
-             wx_wind_spd, _wx_compass(wx_wind_dir), wx_wind_gst);
+    snprintf(line, sizeof(line), "W:%.0f" WX_WIND_UNIT " %s  G:%.0f" WX_WIND_UNIT,
+             WX_FROM_METRIC_WIND(wx_wind_spd), _wx_compass(wx_wind_dir), WX_FROM_METRIC_WIND(wx_wind_gst));
     gfx->fillRect(10, iy + 10, WX_FCAST_W-30, 8, DARKBLUE);
     gfx->setTextColor(RGB565(180, 220, 255));
     gfx->setCursor(12, iy + 10);
@@ -221,7 +273,7 @@ static void wx_draw_forecast() {
     gfx->print(line);
 
     // Current temp — between her legs, near bottom
-    snprintf(buf, sizeof(buf), "%.0fF", wx_temp);
+    snprintf(buf, sizeof(buf), "%.0f" WX_TEMP_UNIT, WX_FROM_METRIC_TEMP(wx_temp));
     gfx->fillRect(WX_TEMP_X + 12, WX_TEMP_Y, 46, 16, DARKBLUE);
     gfx->setTextSize(2);
     _wx_center(WX_TEMP_X, WX_TEMP_Y, 46, buf, YELLOW);
@@ -283,18 +335,21 @@ static bool wx_fetch() {
         ",relative_humidity_2m,pressure_msl"
         ",wind_speed_10m,wind_direction_10m,wind_gusts_10m"
         "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset"
-        "&temperature_unit=fahrenheit&wind_speed_unit=mph"
-        "&timezone=auto&forecast_days=%d",
+        "&timezone=auto&forecast_days=%d",   // API always returns metric (°C, km/h)
         lat, lon, WX_FORECAST_DAYS);
 
     JsonDocument wx;
     if (!_wx_fetch_json(url, wx)) return false;
 
+#ifdef AHTX0
+    wx_sensor_read();
+#else
     wx_temp     = wx["current"]["temperature_2m"]       | wx_temp;
+    wx_humidity = wx["current"]["relative_humidity_2m"] | wx_humidity;
+#endif
     wx_cond     = _wx_wmo(wx["current"]["weather_code"] | 0);
     wx_utc_off  = wx["utc_offset_seconds"]              | wx_utc_off;
     wx_feels    = wx["current"]["apparent_temperature"] | wx_feels;
-    wx_humidity = wx["current"]["relative_humidity_2m"] | wx_humidity;
     wx_pressure = wx["current"]["pressure_msl"]         | wx_pressure;
     wx_wind_spd = wx["current"]["wind_speed_10m"]       | wx_wind_spd;
     wx_wind_dir = wx["current"]["wind_direction_10m"]   | wx_wind_dir;
@@ -315,7 +370,7 @@ static bool wx_fetch() {
     _parse_hhmm(wx["daily"]["sunrise"][0] | "--:--", wx_sunrise);
     _parse_hhmm(wx["daily"]["sunset"][0]  | "--:--", wx_sunset);
 
-    Serial.printf("[wx] %.1fF code=%d utc=%d\n",
+    Serial.printf("[wx] %.1f°C code=%d utc=%d\n",
                   wx_temp, (int)wx["current"]["weather_code"], wx_utc_off);
     return true;
 }
