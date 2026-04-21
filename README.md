@@ -28,19 +28,23 @@ Green Yellow Black Red
 So, here is my mapping:
 
 ```
-G Y B R  (CN1) | G Y B R (P1)
+A B C D         E F G H
+G Y B R (SPI) | G Y B R (P1)
 
-2|1|1|2          G| |3|3
-7|8|9|3          N| |5|V
-                 D| | |3
+27  - A
+18  - B
+19  - C
+23  - D
+GND - E
+3V3 - H
 
-21 - LCD backlight
-35 - IN-only
+21  - LCD backlight
+35  - IN-only
 
 LED on board (inverted: LOW=on)
-22 - Red
-16 - Green
-17 - Blue
+22  - Red
+16  - Green
+17  - Blue
 ```
 
 I found this with a multimeter and [pincheck](src/pincheck/):
@@ -49,16 +53,14 @@ I found this with a multimeter and [pincheck](src/pincheck/):
 pio run -e pincheck --target upload --target monitor
 ```
 
-
-So temperature sensor is hooked up like this:
+So temperature sensor is hooked up like this, with a custom plug:
 
 ```
-18 19 3V3 GND
-S   S  3   G
-C   D  V   N
-L   A  3   D
+18 - SCL  YELLOW
+19 - SDA  GREEN
+3V3       RED
+GND       BLACK
 ```
-
 
 I also included an i2c scanner for checking your i2c for a ATHX sensor:
 

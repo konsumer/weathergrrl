@@ -32,7 +32,7 @@ void setup() {
     if (aht10_begin()) {
         Serial.println("AHT10 init good.");
     } else {
-        Serial.println("AHT10 init failed. Is the sensor connected to the Grove port?");
+        Serial.println("AHT10 init failed. Is the sensor connected?");
     }
 }
 
