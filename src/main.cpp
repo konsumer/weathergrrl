@@ -67,6 +67,10 @@ void setup() {
     gfx->setCursor(8, 100);
     gfx->print("Getting info...");
 
+#ifdef AHTX0
+    wx_sensor_begin();
+#endif
+
     // NTP sync — UTC; local offset comes from weather API
     configTime(0, 0, "pool.ntp.org");
     uint32_t sync_t = millis();

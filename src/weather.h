@@ -26,10 +26,9 @@
 
 #ifdef AHTX0
 #include <Wire.h>
-#include <Adafruit_AHTX0.h>
-Adafruit_AHTX0 aht;
-#define AHTX0_SDA 21
-#define AHTX0_SCL 22
+#define AHTX0_ADDR 0x38
+#define AHTX0_SDA  27
+#define AHTX0_SCL  22
 #endif
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -57,21 +56,33 @@ static bool _aht_ready = false;
 
 static bool wx_sensor_begin() {
     Wire.begin(AHTX0_SDA, AHTX0_SCL);
-    _aht_ready = aht.begin();
-    if (!_aht_ready) {
+    Wire.beginTransmission(AHTX0_ADDR);
+    if (Wire.endTransmission() != 0) {
         Serial.println("[wx] Could not find AHTX0 sensor — will use internet temp");
         return false;
     }
+    // calibrate
+    Wire.beginTransmission(AHTX0_ADDR);
+    Wire.write(0xE1); Wire.write(0x08); Wire.write(0x00);
+    Wire.endTransmission();
+    _aht_ready = true;
     Serial.println("[wx] AHTX0 ready");
     return true;
 }
 
 static void wx_sensor_read() {
     if (!_aht_ready) return;
-    sensors_event_t hum_ev, temp_ev;
-    aht.getEvent(&hum_ev, &temp_ev);
-    wx_temp     = temp_ev.temperature;   // stored as °C
-    wx_humidity = hum_ev.relative_humidity;
+    Wire.beginTransmission(AHTX0_ADDR);
+    Wire.write(0xAC); Wire.write(0x33); Wire.write(0x00);
+    if (Wire.endTransmission() != 0) return;
+    delay(80);  // wait for measurement
+    if (Wire.requestFrom(AHTX0_ADDR, 6) != 6) return;
+    uint8_t buf[6];
+    for (auto& b : buf) b = Wire.read();
+    uint32_t raw_hum  = ((uint32_t)buf[1] << 12) | ((uint32_t)buf[2] << 4) | (buf[3] >> 4);
+    uint32_t raw_temp = (((uint32_t)buf[3] & 0x0F) << 16) | ((uint32_t)buf[4] << 8) | buf[5];
+    wx_humidity = raw_hum  / 1048576.0f * 100.0f;
+    wx_temp     = raw_temp / 1048576.0f * 200.0f - 50.0f;
     Serial.printf("[aht] %.1f°C  %.0f%%\n", wx_temp, wx_humidity);
 }
 #endif
